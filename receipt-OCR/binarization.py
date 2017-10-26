@@ -1,9 +1,8 @@
 import cv2
 import numpy as np
 
-MAGNITUDE = 1.5
 
-def bradley_roth_numpy(image, s=None, t=None):
+def adaptive_thresholding(image, s=None, t=None):
 
     # Convert image to numpy array
     img = np.array(image).astype(np.float)
@@ -21,8 +20,8 @@ def bradley_roth_numpy(image, s=None, t=None):
     intImage = np.cumsum(np.cumsum(img, axis=1), axis=0)
 
     # Define grid of points
-    (rows,cols) = img.shape[:2]
-    (X,Y) = np.meshgrid(np.arange(cols), np.arange(rows))
+    (rows, cols) = img.shape[:2]
+    (X, Y) = np.meshgrid(np.arange(cols), np.arange(rows))
 
     # Make into 1D grid of coordinates for easier access
     X = X.ravel()
@@ -30,7 +29,7 @@ def bradley_roth_numpy(image, s=None, t=None):
 
     # Ensure s is even so that we are able to index into the image
     # properly
-    s = s + np.mod(s,2)
+    s = s + np.mod(s, 2)
 
     # Access the four corners of each neighbourhood
     x1 = X - s/2
@@ -73,38 +72,30 @@ def bradley_roth_numpy(image, s=None, t=None):
     # Return image back to user
     return out
 
-img = cv2.imread('img/mesopotamia.jpg')
-img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-h, w = img_gray.shape
-width, height = int(w*MAGNITUDE), int(h*MAGNITUDE)
 
-gray = cv2.GaussianBlur(img_gray, (5, 5), 0)
-edged = cv2.Canny(gray, 75, 200)
+def get_roi(img_gray):
+    gray = cv2.GaussianBlur(img_gray, (5, 5), 0)
+    edged = cv2.Canny(gray, 75, 200)
 
-im2, contours, hierarchy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-cnts = sorted(contours, key = cv2.contourArea, reverse = True)[:5]
+    im2, contours, hierarchy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    cnts = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
 
-# loop over the contours
-for c in cnts:
-	# approximate the contour
-	# if our approximated contour has four points, then we
-	# can assume that we have found our screen
-	peri = cv2.arcLength(c, True)
-	approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+    # loop over the contours
+    for c in cnts:
+        # approximate the contour
+        # if our approximated contour has four points, then we
+        # can assume that we have found our screen
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
 
-	if len(approx) == 4:
-		screen_cnt = approx
-		break
+        if len(approx) == 4:
+            screen_cnt = approx
+            break
 
-x, y, w, h = cv2.boundingRect(screen_cnt)
-res = img_gray[y: y+h, x: x+w]
+    x, y, w, h = cv2.boundingRect(screen_cnt)
+    res = img_gray[y: y+h, x: x+w]
 
-out = bradley_roth_numpy(res)
+    roi = adaptive_thresholding(res)
 
-cv2.namedWindow('Input', cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Input', width, height)
-cv2.imshow('Input', img)
+    return roi
 
-cv2.imshow('Output', out)
-
-cv2.waitKey(0)
