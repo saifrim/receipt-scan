@@ -4,7 +4,7 @@ import numpy as np
 from sys import argv, exit
 
 from kmeans import segment_by_angle_kmeans, segmented_intersections
-from preprocess import hough_transform, get_median_lines
+from preprocess import hough_transform, get_median_lines, bradley_roth
 
 
 if __name__ == '__main__':
@@ -40,11 +40,16 @@ if __name__ == '__main__':
 
     segmented = segment_by_angle_kmeans(lines)
     intersections = segmented_intersections(segmented)
-    get_median_lines(intersections, width, height, img)
+    warped = get_median_lines(intersections, width, height, img)
+
+    gray_warped = cv2.cvtColor(warped, cv2.COLOR_RGB2GRAY)
+    thresh = bradley_roth(gray_warped)
 
     cv2.imshow('Edged image', edges)
     cv2.imshow('Output', img)
-
+    cv2.imshow('Warped', warped)
+    cv2.imshow('Threshold', thresh)
+    cv2.imwrite('result.jpg', thresh)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
